@@ -36,11 +36,12 @@ if __name__ == "__main__":
         logger.debug("File is new, add headers.")
         add_header = True
 
+
     with open(args.tracking_file, "a") as out:
         output = writer(out)
 
         if add_header:
-            output.writerow(["timestamp", "url", "loadtime", "size"])
+            output.writerow(["timestamp", "ping", "download", "upload"])
 
         logger.info("Starting tests")
 
@@ -55,4 +56,6 @@ if __name__ == "__main__":
                 output.writerow([time(), resp.url, resp.elapsed.total_seconds(), len(resp.content)])
 
     logger.info("Done")
+
+
 

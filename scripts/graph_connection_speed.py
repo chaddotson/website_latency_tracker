@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from configparser import RawConfigParser
 from csv import DictReader
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from logging import basicConfig, getLogger, INFO, DEBUG
 from matplotlib import dates
@@ -11,77 +11,15 @@ import numpy as np
 from tempfile import NamedTemporaryFile
 from tweepy import API, OAuthHandler
 
+
 logger = getLogger(__name__)
-
-
-class NoRecordsError(RuntimeError):
-    pass
-
-
-class GraphOutput(object):
-    def create_output(self):
-        return None
-
-
-class DisplayGraphOutput(GraphOutput):
-    def create_output(self):
-        mpl.show()
-
-        return None
-
-
-class FileGraphOutput(GraphOutput):
-    def __init__(self, filename, format="png", reset_seek=True):
-        self._filename = filename
-        self._format = format
-        self._reset_seek = reset_seek
-
-    def create_output(self):
-        mpl.savefig(self._filename, format=self._format)
-        return self._filename
-
-
-class BytesGraphOutput(GraphOutput):
-    def __init__(self, format="png", reset_seek=True):
-        self._format = format
-        self._reset_seek = reset_seek
-
-    def create_output(self):
-        results = BytesIO()
-        mpl.savefig(results, format=self._format)
-
-        if self._reset_seek:
-            results.seek(0)
-
-        return results
-
-
-class TweetGraphOutput(BytesGraphOutput):
-    def __init__(self, consumer_key, consumer_secret, access_key, access_secret):
-        auth = OAuthHandler(consumer_key, consumer_secret)
-        auth.set_access_token(access_key, access_secret)
-
-        self._api = API(auth)
-
-        super(TweetGraphOutput, self).__init__(format="png")
-
-    def create_output(self):
-        output = super(TweetGraphOutput, self).create_output()
-
-        with NamedTemporaryFile(suffix=".png") as f:
-            f.write(output.read())
-
-            print(f.name)
-
-            self._api.update_with_media(f.name, "Test!")
-
-        return output
 
 
 def parse_args():
     parser = ArgumentParser(description='Graph website response data.')
     parser.add_argument('tracking_file', help='File to read results from')
-    parser.add_argument('url', help='url', nargs="?")
+    parser.add_argument('-f', '--filter', help='Filtering ids', nargs="+", default=None)
+    parser.add_argument('-d', '--days', help='how many days to graph', type=float, default=3.0)
     parser.add_argument('-o', '--out', help='Output file', type=str)
     parser.add_argument('-t', '--tweet', help='Output as tweet (arg = twitter.cfg)', type=str)
     parser.add_argument('-s', '--show', help='Show', default=False, action='store_true')
@@ -102,15 +40,91 @@ def read_monitor_file(filename):
     return contents
 
 
-def generate_graph(tracking_file, output_strategy):
+
+class NoRecordsError(RuntimeError):
+    pass
+
+
+class GraphOutput(object):
+    def create_output(self):
+        return None
+
+
+class DisplayGraphOutput(GraphOutput):
+    def create_output(self):
+        mpl.show()
+
+        return None
+
+
+class FileGraphOutput(GraphOutput):
+    def __init__(self, filename, image_format="png", reset_seek=True):
+        self._filename = filename
+        self._image_format = image_format
+        self._reset_seek = reset_seek
+
+    def create_output(self):
+        mpl.savefig(self._filename, format=self._image_format)
+        return self._filename
+
+
+class BytesGraphOutput(GraphOutput):
+    def __init__(self, image_format="png", reset_seek=True):
+        self._image_format = image_format
+        self._reset_seek = reset_seek
+
+    def create_output(self):
+        results = BytesIO()
+        mpl.savefig(results, format=self._image_format)
+
+        if self._reset_seek:
+            results.seek(0)
+
+        return results
+
+
+class TweetGraphOutput(BytesGraphOutput):
+    def __init__(self, consumer_key, consumer_secret, access_key, access_secret):
+        auth = OAuthHandler(consumer_key, consumer_secret)
+        auth.set_access_token(access_key, access_secret)
+
+        self._api = API(auth)
+
+        super(TweetGraphOutput, self).__init__(image_format="png")
+
+    def create_output(self):
+        output = super(TweetGraphOutput, self).create_output()
+
+        with NamedTemporaryFile(suffix=".png") as f:
+            f.write(output.read())
+
+            print(f.name)
+
+            self._api.update_with_media(f.name, "Test!")
+
+        return output
+
+
+def generate_graph(tracking_file, days, output_strategy, filter_list=None):
+
+    logger.info("Source File: %s", tracking_file)
+    logger.info("Days: %f", days)
+    logger.info("Output: %s", output_strategy)
+    logger.info("Filter: %s", filter_list)
+
     records = read_monitor_file(tracking_file)
-    filtered = [rec for rec in records if rec["url"] == args.url]
+    start_timestamp = (datetime.now() - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+
+    filtered = [rec for rec in records if float(rec["timestamp"]) >= start_timestamp and (filter_list is None or rec["sponsor_id"] in filter_list)]
+
+    logger.debug("Start: %f / %s", start_timestamp, datetime.fromtimestamp(start_timestamp))
+    logger.debug("First: %f / %s", float(filtered[0]["timestamp"]), datetime.fromtimestamp(float(filtered[0]["timestamp"])))
 
     if not len(filtered):
         raise NoRecordsError()
 
-    x = [dates.date2num(datetime.fromtimestamp(float(rec["timestamp"]))) for rec in records]
-    y = np.array([float(rec["loadtime"]) for rec in records])
+    x = [dates.date2num(datetime.fromtimestamp(float(rec["timestamp"]))) for rec in filtered]
+    y = np.array([float(rec["download"]) / 1000000.0 for rec in filtered])
 
     fig = mpl.figure(figsize=(7, 6))
 
@@ -167,8 +181,10 @@ if __name__ == "__main__":
                                         config.get("TWITTER", "CONSUMER_SECRET"),
                                         config.get("TWITTER", "ACCESS_KEY"),
                                         config.get("TWITTER", "ACCESS_SECRET"))
+    else:
+        logger.error("No valid output type specified.  Unable to continue.")
+        exit()
 
-    results = generate_graph(args.tracking_file, output_strategy=output_using)
+    results = generate_graph(args.tracking_file, days=args.days, output_strategy=output_using, filter_list=args.filter)
 
     logger.info("Done")
-
