@@ -42,7 +42,11 @@ def do_speedtest(servers=None):
     return s.results
 
 
-def log_results(output, results):
+def write_header(output):
+    output.writerow(["timestamp", "lat", "lon", "distance", "sponsor_id", "sponsor", "ping", "download", "upload"])
+
+
+def write_results(output, results):
     output.writerow([time(), results.server["lat"], results.server["lon"],
                      results.server["d"], results.server["id"], results.server["sponsor"],
                      results.ping, results.download, results.upload])
@@ -72,16 +76,16 @@ if __name__ == "__main__":
         output = writer(out)
 
         if add_header:
-            output.writerow(["timestamp", "lat", "lon", "distance", "sponsor_id", "sponsor", "ping", "download", "upload"])
+            write_header(output)
 
         if args.servers:
             for server in args.servers:
                 results = do_speedtest([server])
-                log_results(output, results)
+                write_results(output, results)
 
         else:
             results = do_speedtest()
-            log_results(output, results)
+            write_results(output, results)
 
     logger.info("Done")
 
