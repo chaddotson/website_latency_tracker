@@ -1,0 +1,4 @@
+matplotlib==2.0.2
+numpy==1.12.1
+speedtest-cli==1.0.6
+tweepy==3.5.0
