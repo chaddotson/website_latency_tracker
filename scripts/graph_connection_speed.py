@@ -4,10 +4,13 @@ from csv import DictReader
 from datetime import datetime, timedelta
 from io import BytesIO
 from logging import basicConfig, getLogger, INFO, DEBUG
-from matplotlib import dates
-from matplotlib.dates import DateFormatter
+
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.dates import date2num, DateFormatter
 import matplotlib.pyplot as mpl
 import numpy as np
+
 from tempfile import NamedTemporaryFile
 from tweepy import API, OAuthHandler
 
@@ -117,24 +120,48 @@ def generate_graph(tracking_file, days, output_strategy, filter_list=None):
 
     filtered = [rec for rec in records if float(rec["timestamp"]) >= start_timestamp and (filter_list is None or rec["sponsor_id"] in filter_list)]
 
-    logger.debug("Start: %f / %s", start_timestamp, datetime.fromtimestamp(start_timestamp))
-    logger.debug("First: %f / %s", float(filtered[0]["timestamp"]), datetime.fromtimestamp(float(filtered[0]["timestamp"])))
+    logger.debug("Filtered Length: %d", len(filtered))
 
     if not len(filtered):
         raise NoRecordsError()
 
-    x = [dates.date2num(datetime.fromtimestamp(float(rec["timestamp"]))) for rec in filtered]
+    logger.debug("Start: %f / %s", start_timestamp, datetime.fromtimestamp(start_timestamp))
+    logger.debug("First: %f / %s", float(filtered[0]["timestamp"]), datetime.fromtimestamp(float(filtered[0]["timestamp"])))
+
+
+    x = [date2num(datetime.fromtimestamp(float(rec["timestamp"]))) for rec in filtered]
     y = np.array([float(rec["download"]) / 1000000.0 for rec in filtered])
+    y2 = np.array([float(rec["upload"]) / 1000000.0 for rec in filtered])
+    y3 = np.array([float(rec["ping"]) for rec in filtered])
 
-    fig = mpl.figure(figsize=(7, 6))
 
-    axes = fig.add_subplot(1, 1, 1)
-    axes.set_xticklabels(axes.xaxis.get_majorticklabels(), rotation=90)
-    axes.xaxis.set_major_formatter(DateFormatter('%m/%d/%Y - %H:%M:%S'))
-    axes.xaxis_date()
+    #fig = mpl.figure(figsize=(7, 6))
+    fig, speed_graph = mpl.subplots()
+
+    # speed_graph = fig.add_subplot(1, 1, 1)
+    speed_graph.set_title('Connection Speed', fontsize=14, fontweight='bold')
+    speed_graph.set_xticklabels(speed_graph.xaxis.get_majorticklabels(), rotation=90)
+    speed_graph.xaxis.set_major_formatter(DateFormatter('%m/%d/%Y - %H:%M:%S'))
+    speed_graph.xaxis_date()
+
+    speed_graph.set_xlabel("Date - Time")
+    speed_graph.set_ylabel("Speed (Mbps)")
+    speed_graph.set_ylim([0,50])
+    #mpl.tight_layout()
+
+    plt = speed_graph.plot(x, y, label="Downstream")
+    plt2 = speed_graph.plot(x, y2, label="Upstream")
+
+    speed_graph.legend(loc=2)
+
+    # ping_graph = fig.add_subplot(1, 1, 1)
+    ping_graph = speed_graph.twinx()
+    ping_graph.set_ylim([0, 300])
+    ping_plt = ping_graph.plot(x, y3, label="Ping", color='y')
+
+
     mpl.tight_layout()
-
-    plt = axes.plot(x, y)
+    #mpl.gcf().subplots_adjust(bottom=0.15)
 
     return output_strategy.create_output()
 
