@@ -135,33 +135,43 @@ def generate_graph(tracking_file, days, output_strategy, filter_list=None):
     y3 = np.array([float(rec["ping"]) for rec in filtered])
 
 
-    #fig = mpl.figure(figsize=(7, 6))
-    fig, speed_graph = mpl.subplots()
+    fig = mpl.figure(figsize=(7, 6))
 
-    # speed_graph = fig.add_subplot(1, 1, 1)
+
+    from matplotlib import gridspec
+    gs = gridspec.GridSpec(2, 1,
+                           width_ratios=[1],
+                           height_ratios=[4, 1]
+                           )
+
+    speed_graph = fig.add_subplot(gs[0])
+
     speed_graph.set_title('Connection Speed', fontsize=14, fontweight='bold')
-    speed_graph.set_xticklabels(speed_graph.xaxis.get_majorticklabels(), rotation=90)
-    speed_graph.xaxis.set_major_formatter(DateFormatter('%m/%d/%Y - %H:%M:%S'))
+    #speed_graph.set_xticklabels(speed_graph.xaxis.get_majorticklabels(), rotation=90)
+    speed_graph.xaxis.set_major_formatter(DateFormatter('%m/%d-%H:%M'))
     speed_graph.xaxis_date()
 
     speed_graph.set_xlabel("Date - Time")
     speed_graph.set_ylabel("Speed (Mbps)")
-    speed_graph.set_ylim([0,50])
-    #mpl.tight_layout()
+    # speed_graph.set_ylim([0,50])
 
-    plt = speed_graph.plot(x, y, label="Downstream")
-    plt2 = speed_graph.plot(x, y2, label="Upstream")
+    plt = speed_graph.plot(x, y, label="Downstream", color="b")
+    plt2 = speed_graph.plot(x, y2, label="Upstream", color="r")
 
     speed_graph.legend(loc=2)
 
-    # ping_graph = fig.add_subplot(1, 1, 1)
-    ping_graph = speed_graph.twinx()
-    ping_graph.set_ylim([0, 300])
-    ping_plt = ping_graph.plot(x, y3, label="Ping", color='y')
+    ping_graph = fig.add_subplot(gs[1])
+    ping_graph.set_title('Latency', fontsize=14, fontweight='bold')
+    ping_graph.set_xlabel("Date - Time")
+    ping_graph.set_ylabel("Latency (ms)")
+
+    ping_graph.xaxis.set_major_formatter(DateFormatter('%m/%d-%H:%M'))
+    ping_graph.xaxis_date()
+
+    ping_plt = ping_graph.plot(x, y3, label="Ping", color='g')
 
 
     mpl.tight_layout()
-    #mpl.gcf().subplots_adjust(bottom=0.15)
 
     return output_strategy.create_output()
 
