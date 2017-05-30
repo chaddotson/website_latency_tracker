@@ -103,7 +103,7 @@ class TweetGraphOutput(BytesGraphOutput):
 
             print(f.name)
 
-            self._api.update_with_media(f.name, "Test!")
+            self._api.update_with_media(f.name, "Connection Performance")
 
         return output
 
