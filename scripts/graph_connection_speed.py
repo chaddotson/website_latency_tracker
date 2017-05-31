@@ -8,6 +8,7 @@ from logging import basicConfig, getLogger, INFO, DEBUG
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.dates import date2num, DateFormatter
+from matplotlib.ticker import MaxNLocator
 import matplotlib.pyplot as mpl
 import numpy as np
 
@@ -151,9 +152,13 @@ def generate_graph(tracking_file, days, output_strategy, filter_list=None):
     speed_graph.xaxis.set_major_formatter(DateFormatter('%m/%d-%H:%M'))
     speed_graph.xaxis_date()
 
+    speed_graph.xaxis.set_major_locator(MaxNLocator(4))
+
     speed_graph.set_xlabel("Date - Time")
     speed_graph.set_ylabel("Speed (Mbps)")
     # speed_graph.set_ylim([0,50])
+
+
 
     plt = speed_graph.plot(x, y, label="Downstream", color="b")
     plt2 = speed_graph.plot(x, y2, label="Upstream", color="r")
@@ -167,6 +172,7 @@ def generate_graph(tracking_file, days, output_strategy, filter_list=None):
 
     ping_graph.xaxis.set_major_formatter(DateFormatter('%m/%d-%H:%M'))
     ping_graph.xaxis_date()
+    ping_graph.xaxis.set_major_locator(MaxNLocator(4))
 
     ping_plt = ping_graph.plot(x, y3, label="Ping", color='g')
 
