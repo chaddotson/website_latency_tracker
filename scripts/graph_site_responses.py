@@ -132,7 +132,7 @@ def list_sites(tracking_file):
         print(url)
 
 
-if __name__ == "__main__":
+def main():
     logging_config = dict(level=INFO,
                           format='[%(asctime)s - %(filename)s:%(lineno)d - %(funcName)s - %(levelname)s] %(message)s')
     basicConfig(**logging_config)
@@ -172,3 +172,5 @@ if __name__ == "__main__":
 
     logger.info("Done")
 
+if __name__ == "__main__":
+    main()

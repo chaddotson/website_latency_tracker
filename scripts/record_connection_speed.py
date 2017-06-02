@@ -52,7 +52,7 @@ def write_results(output, results):
                      results.ping, results.download, results.upload])
 
 
-if __name__ == "__main__":
+def main():
 
     logging_config = dict(level=INFO,
                           format='[%(asctime)s - %(filename)s:%(lineno)d - %(funcName)s - %(levelname)s] %(message)s')
@@ -90,5 +90,6 @@ if __name__ == "__main__":
     logger.info("Done")
 
 
-
+if __name__ == "__main__":
+    main()
 
